@@ -1,0 +1,82 @@
+package com.patientRecTransferApp.security;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.Collections;
+
+@Configuration
+public class AppConfig {
+	
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		
+		http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+		.and()
+		.authorizeHttpRequests(Authorize -> Authorize
+				.requestMatchers("/api/**").authenticated()
+				.anyRequest().permitAll()
+				)
+		.addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
+		.csrf().disable()
+		.cors().configurationSource(new CorsConfigurationSource() {
+					
+					@Override
+					public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
+						
+						CorsConfiguration cfg = new CorsConfiguration();
+						
+						cfg.setAllowedOrigins(Arrays.asList(
+								
+								"http://localhost:8082",
+								"http://localhost:3000"
+
+							)
+						);
+						//cfg.setAllowedMethods(Arrays.asList("GET", "POST","DELETE","PUT"));
+						cfg.setAllowedMethods(Collections.singletonList("*"));
+						cfg.setAllowCredentials(true);
+						cfg.setAllowedHeaders(Collections.singletonList("*"));
+						cfg.setExposedHeaders(Arrays.asList("Authorization"));
+						cfg.setMaxAge(3600L);
+						return cfg;
+						
+					}
+				})
+		.and()
+		.httpBasic()
+		.and()
+		.formLogin()
+				.and().logout().logoutUrl("/logout").logoutSuccessUrl("/auth/signin")
+				.and().rememberMe()
+				.key("+_)(*&/'6+5+4+3+2+1+0-)(*&^%$#@!~`")
+				.tokenValiditySeconds(86400);
+		;
+		
+		return http.build();
+		
+	}
+	
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
+
+	@Bean
+	public TaskScheduler taskScheduler() {
+		return new ThreadPoolTaskScheduler();
+	}
+
+}
