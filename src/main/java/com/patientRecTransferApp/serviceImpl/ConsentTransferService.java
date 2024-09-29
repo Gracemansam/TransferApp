@@ -84,7 +84,7 @@ public class ConsentTransferService {
         String salt = generateSalt();
         String encryptedContent = encryptFile(fileContent, patient.getSecretAnswer(), salt);
 
-        fileTransfer.setEncryptedContent(encryptedContent);
+        fileTransfer.setEncryptedFile(encryptedContent);
         fileTransfer.setEncryptionSalt(salt);
         fileTransfer.setTransferStatus("ENCRYPTED");
         fileTransferRepository.save(fileTransfer);

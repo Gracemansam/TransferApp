@@ -1,5 +1,6 @@
 package com.patientRecTransferApp.controller;
 
+
 import com.patientRecTransferApp.dto.ConsentRequestDto;
 import com.patientRecTransferApp.dto.FileUploadDto;
 import com.patientRecTransferApp.entity.ConsentRequest;
@@ -36,7 +37,7 @@ public class ConsentTransferController {
     @PostMapping("/upload-file")
     public ResponseEntity<Void> uploadFile(@RequestBody FileUploadDto uploadDto) {
         try {
-            consentTransferService.uploadAndEncryptFile(uploadDto.getFileTransferId(), uploadDto.getFileContent());
+            consentTransferService.uploadAndEncryptFile(uploadDto.getFileTransferId(), uploadDto.getFileContent().getBytes());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
