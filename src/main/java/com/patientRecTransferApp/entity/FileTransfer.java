@@ -48,7 +48,7 @@ public class FileTransfer  extends BaseEntity{
 
     @Lob
     @Column(name = "encrypted_file")
-    private byte[] encryptedFile;
+    private String encryptedFile;
 
 
     // Getters and setters

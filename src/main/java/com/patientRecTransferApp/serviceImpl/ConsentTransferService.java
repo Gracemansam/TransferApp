@@ -104,7 +104,7 @@ public class ConsentTransferService {
         Patient patient = fileTransfer.getPatient();
         String decryptedKey = decryptDecryptionKey(providedDecryptionKey, patient.getSecretAnswer());
 
-        return decryptFile(fileTransfer.getEncryptedContent(), decryptedKey, fileTransfer.getEncryptionSalt());
+        return decryptFile(fileTransfer.getEncryptedFile(), decryptedKey, fileTransfer.getEncryptionSalt());
     }
 
     private void initiateFileTransfer(ConsentRequest consentRequest) {

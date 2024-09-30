@@ -53,7 +53,5 @@ public class ConsentTransferController {
             return ResponseEntity.internalServerError().build();
         }
     }
-   // help write the email service class. and the upload is in excel file format and when
-    // decrypted the other hospital will download it in excel file format also. pls adjust
-    // with all logic and controller class needed
+
 }
