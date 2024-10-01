@@ -1,16 +1,21 @@
 package com.patientRecTransferApp.security;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.stereotype.Repository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -18,57 +23,32 @@ import java.util.Arrays;
 import java.util.Collections;
 
 @Configuration
+@RequiredArgsConstructor
 public class AppConfig {
-	
+	private final JwtTokenValidator jwtTokenValidator;
+	private final CustomUserDetailsService userDetailsService;
+
+
+
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		
-		http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-		.and()
-		.authorizeHttpRequests(Authorize -> Authorize
-				.requestMatchers("/api/**").authenticated()
-				.anyRequest().permitAll()
+		return http
+				.csrf(csrf -> csrf.disable())
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers("/api/admin/**").hasRole("HOSPITAL_ADMIN")
+						.requestMatchers("/api/patient/**").hasRole("PATIENT")
+						.anyRequest().authenticated()
 				)
-		.addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
-		.csrf().disable()
-		.cors().configurationSource(new CorsConfigurationSource() {
-					
-					@Override
-					public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-						
-						CorsConfiguration cfg = new CorsConfiguration();
-						
-						cfg.setAllowedOrigins(Arrays.asList(
-								
-								"http://localhost:8082",
-								"http://localhost:3000"
-
-							)
-						);
-						//cfg.setAllowedMethods(Arrays.asList("GET", "POST","DELETE","PUT"));
-						cfg.setAllowedMethods(Collections.singletonList("*"));
-						cfg.setAllowCredentials(true);
-						cfg.setAllowedHeaders(Collections.singletonList("*"));
-						cfg.setExposedHeaders(Arrays.asList("Authorization"));
-						cfg.setMaxAge(3600L);
-						return cfg;
-						
-					}
-				})
-		.and()
-		.httpBasic()
-		.and()
-		.formLogin()
-				.and().logout().logoutUrl("/logout").logoutSuccessUrl("/auth/signin")
-				.and().rememberMe()
-				.key("+_)(*&/'6+5+4+3+2+1+0-)(*&^%$#@!~`")
-				.tokenValiditySeconds(86400);
-		;
-		
-		return http.build();
-		
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.addFilterBefore(jwtTokenValidator, UsernamePasswordAuthenticationFilter.class)
+				.build();
 	}
-	
+
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+		return authenticationConfiguration.getAuthenticationManager();
+	}
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();

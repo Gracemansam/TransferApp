@@ -1,51 +1,84 @@
 package com.patientRecTransferApp.security;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.security.Key;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtTokenProvider {
-	
-	private SecretKey key=Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
-	
-	public String generateToken(Authentication auth) {
 
-		String jwt=Jwts.builder()
+	@Value("${app.jwt-secret}")
+	private String jwtSecret;
+
+	@Value("${app.jwt-expiration-milliseconds}")
+	private long jwtExpirationDate;
+
+	public String generateToken(Authentication authentication) {
+		String username = authentication.getName();
+		Date currentDate = new Date();
+		Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
+
+		String roles = authentication.getAuthorities().stream()
+				.map(GrantedAuthority::getAuthority)
+				.collect(Collectors.joining(","));
+
+		return Jwts.builder()
+				.setSubject(username)
+				.claim("roles", roles)
 				.setIssuedAt(new Date())
-				.setExpiration(new Date(new Date().getTime()+86400000))
-				.claim("email",auth.getName())
-				.signWith(key)
+				.setExpiration(expireDate)
+				.signWith(key())
 				.compact();
-		
-		return jwt;	
 	}
-	
-	public String getEmailFromJwtToken(String jwt) {
-		jwt=jwt.substring(7);
-		
-		Claims claims=Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(jwt).getBody();
-		String email=String.valueOf(claims.get("email"));
-		
-		return email;
+
+	private Key key() {
+		return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
 	}
-	
-	public String populateAuthorities(Collection<? extends GrantedAuthority> collection) {
-		Set<String> auths=new HashSet<>();
-		
-		for(GrantedAuthority authority:collection) {
-			auths.add(authority.getAuthority());
+
+	public String getUsername(String token) {
+		Claims claims = Jwts.parserBuilder()
+				.setSigningKey(key())
+				.build()
+				.parseClaimsJws(token)
+				.getBody();
+		return claims.getSubject();
+	}
+
+	public boolean validateToken(String token) {
+		try {
+			Jwts.parserBuilder()
+					.setSigningKey(key())
+					.build()
+					.parse(token);
+			return true;
+		} catch (MalformedJwtException | ExpiredJwtException | UnsupportedJwtException | IllegalArgumentException e) {
+			throw new RuntimeException("Invalid JWT token: " + e.getMessage());
 		}
-		return String.join(",",auths);
 	}
+
+
+	public String getRoles(String token) {
+		Claims claims = Jwts.parserBuilder()
+				.setSigningKey(key())
+				.build()
+				.parseClaimsJws(token)
+				.getBody();
+		return claims.get("roles", String.class);
+	}
+//=========================================================================
+
 
 }

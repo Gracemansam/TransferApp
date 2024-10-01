@@ -22,25 +22,8 @@ public class AppUserController {
 
     private final AppUserService appUserService;
 
-    @PostMapping("/register/patient")
-    public ResponseEntity<AuthResponse> registerPatient(@RequestBody RegisterDto registerDto) {
-        return appUserService.registerPatient(registerDto);
-    }
 
-    @PostMapping("/register/hospital-admin/{hospitalId}")
-    public ResponseEntity<AuthResponse> registerHospitalAdmin(@RequestBody RegisterDto registerDto, @PathVariable Long hospitalId) {
-        return appUserService.registerHospitalAdmin(registerDto, hospitalId);
-    }
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestParam String email, @RequestParam String password, HttpServletRequest request) {
-        return appUserService.login(email, password, request);
-    }
-
-    @PostMapping("/register/hospital")
-    public ResponseEntity<Hospital> registerHospital(@RequestBody HospitalDto hospitalDto) {
-        return appUserService.registerHospital(hospitalDto);
-    }
 
     @PutMapping("/user/{id}")
     public ResponseEntity<AppUser> updateUser(@PathVariable Long id, @RequestBody AppUser appUser) {

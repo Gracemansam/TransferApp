@@ -28,5 +28,4 @@ public class TransferLog extends BaseEntity {
     @Column(name = "log_level")
     private String logLevel;
 
-    // Getters and setters
 }

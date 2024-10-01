@@ -70,82 +70,56 @@ public class AppUserServiceImpl implements AppUserService {
 
     }
 
-@Override
-    public ResponseEntity<AuthResponse> registerHospitalAdmin(RegisterDto registerDto, Long hospitalId) {
-
-        Optional<AppUser> isEmailExist = appUserRepository.findByEmail(registerDto.getEmail());
-
-        if (isEmailExist.isPresent()) {
-            ErrorModel errorModel = ErrorModel.builder()
+    @Override
+    public ResponseEntity<AuthResponse> registerPatient(RegisterDto registerDto) {
+        if (appUserRepository.findByEmail(registerDto.getEmail()).isPresent()) {
+            throw new BusinessException(ErrorModel.builder()
                     .code(CommonConstant.USER_ALREADY_EXIST_CODE)
                     .message(CommonConstant.USER_ALREADY_EXIST)
-//					.timestamp(LocalDateTime.now())
-                    .build();
-            throw new BusinessException(errorModel);
+                    .build());
+        }
 
+        Patient patient = patientConverter.convertDTOtoPatientEntity(registerDto);
+        patient.setPassword(passwordEncoder.encode(registerDto.getPassword()));
+        patient.setSecretQuestion(registerDto.getSecretQuestion());
+        patient.setSecretAnswer(encryptSecretAnswer(registerDto.getSecretAnswer()));
+        patient.setUserType(UserType.PATIENT);
 
+        patientRepository.save(patient);
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken(patient.getEmail(), patient.getPassword());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = jwtTokenProvider.generateToken(authentication);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse(jwt, true));
+    }
+
+    @Override
+    public ResponseEntity<AuthResponse> registerHospitalAdmin(RegisterDto registerDto, Long hospitalId) {
+        if (appUserRepository.findByEmail(registerDto.getEmail()).isPresent()) {
+            throw new BusinessException(ErrorModel.builder()
+                    .code(CommonConstant.USER_ALREADY_EXIST_CODE)
+                    .message(CommonConstant.USER_ALREADY_EXIST)
+                    .build());
         }
 
         Hospital hospital = hospitalRepository.findById(hospitalId)
                 .orElseThrow(() -> new RuntimeException("Hospital not found"));
 
-        // Create new user
-        AppUser newUser = appUserConverter.convertDTOtoAppUserEntity(registerDto);
-        newUser.setPassword(passwordEncoder.encode(registerDto.getPassword()));
-        newUser.addPermission("ROLE_HOSPITAL_ADMIN");
-        newUser.setUserType(UserType.HOSPITAL_ADMIN);
-        newUser.setHospital(hospital);
-        appUserRepository.save(newUser);
-        Authentication authentication = new UsernamePasswordAuthenticationToken(newUser.getEmail(), newUser.getPassword());
+        AppUser admin = appUserConverter.convertDTOtoAppUserEntity(registerDto);
+        admin.setPassword(passwordEncoder.encode(registerDto.getPassword()));
+        admin.addRole("ROLE_HOSPITAL_ADMIN");
+        admin.setUserType(UserType.HOSPITAL_ADMIN);
+        admin.setHospital(hospital);
+
+        appUserRepository.save(admin);
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken(admin.getEmail(), admin.getPassword());
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        var jwtToken = jwtTokenProvider.generateToken(authentication);
-        var authResponse = AuthResponse.builder()
-                .jwt(jwtToken)
-                .status(true)
-                .build();
-        return new ResponseEntity<>(authResponse, HttpStatus.CREATED);
+        String jwt = jwtTokenProvider.generateToken(authentication);
 
-
+        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse( jwt,true));
     }
-
-
-
-
-
-
-@Override
-        public ResponseEntity<AuthResponse> registerPatient(RegisterDto registerDto) {
-            Optional<AppUser> isEmailExist = appUserRepository.findByEmail(registerDto.getEmail());
-
-            if (isEmailExist.isPresent()) {
-                ErrorModel errorModel = ErrorModel.builder()
-                        .code(CommonConstant.USER_ALREADY_EXIST_CODE)
-                        .message(CommonConstant.USER_ALREADY_EXIST)
-                        .build();
-                throw new BusinessException(errorModel);
-            }
-
-            Patient newUser = patientConverter.convertDTOtoPatientEntity(registerDto);
-            newUser.setPassword(passwordEncoder.encode(registerDto.getPassword()));
-            newUser.setSecretQuestion(registerDto.getSecretQuestion());
-
-            String encryptedSecretAnswer = encryptSecretAnswer(registerDto.getSecretAnswer());
-            newUser.setSecretAnswer(encryptedSecretAnswer);
-
-            newUser.addPermission("ROLE_PATIENT");
-            newUser.setUserType(UserType.PATIENT);
-            patientRepository.save(newUser);
-
-            Authentication authentication = new UsernamePasswordAuthenticationToken(newUser.getEmail(), newUser.getPassword());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            var jwtToken = jwtTokenProvider.generateToken(authentication);
-            var authResponse = AuthResponse.builder()
-                    .jwt(jwtToken)
-                    .status(true)
-                    .build();
-            return new ResponseEntity<>(authResponse, HttpStatus.CREATED);
-        }
-
         private String encryptSecretAnswer(String secretAnswer) {
             try {
                 SecretKeySpec secretKey = new SecretKeySpec(AES_KEY.getBytes(StandardCharsets.UTF_8), "AES");
