@@ -24,6 +24,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,9 +50,16 @@ public class JwtTokenValidator extends OncePerRequestFilter {
 			String username = jwtTokenProvider.getUsername(token);
 			UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-			List<SimpleGrantedAuthority> authorities = Arrays.stream(jwtTokenProvider.getRoles(token).split(","))
-					.map(SimpleGrantedAuthority::new)
-					.collect(Collectors.toList());
+			List<GrantedAuthority> authorities;
+			List<String> roles = jwtTokenProvider.getRoles(token);
+			if (roles != null && !roles.isEmpty()) {
+				authorities = roles.stream()
+						.map(role -> new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
+						.collect(Collectors.toList());
+			} else {
+				logger.warn("No roles found in token for user: " + username);
+				authorities = Collections.emptyList();
+			}
 
 			UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
 					userDetails,

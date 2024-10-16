@@ -15,7 +15,7 @@ public class AppUserConverter {
         appUser.setPhoneNumber(registerDto.getPhoneNumber());
         appUser.setEmail(registerDto.getEmail());
         appUser.setGender(registerDto.getGender());
-        appUser.setPassword(registerDto.getPassword());
+      //  appUser.setPassword(registerDto.getPassword());
         appUser.setUsername(registerDto.getUsername());
 
         return appUser;

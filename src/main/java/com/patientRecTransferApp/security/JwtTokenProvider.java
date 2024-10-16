@@ -9,10 +9,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.security.Key;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -30,11 +27,9 @@ public class JwtTokenProvider {
 		String username = authentication.getName();
 		Date currentDate = new Date();
 		Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
-
-		String roles = authentication.getAuthorities().stream()
+		List<String> roles = authentication.getAuthorities().stream()
 				.map(GrantedAuthority::getAuthority)
-				.collect(Collectors.joining(","));
-
+				.collect(Collectors.toList());
 		return Jwts.builder()
 				.setSubject(username)
 				.claim("roles", roles)
@@ -65,18 +60,19 @@ public class JwtTokenProvider {
 					.parse(token);
 			return true;
 		} catch (MalformedJwtException | ExpiredJwtException | UnsupportedJwtException | IllegalArgumentException e) {
-			throw new RuntimeException("Invalid JWT token: " + e.getMessage());
+		//	logger.error("Invalid JWT token: " + e.getMessage());
+			return false;
 		}
 	}
 
 
-	public String getRoles(String token) {
+	public List<String> getRoles(String token) {
 		Claims claims = Jwts.parserBuilder()
 				.setSigningKey(key())
 				.build()
 				.parseClaimsJws(token)
 				.getBody();
-		return claims.get("roles", String.class);
+		return claims.get("roles", List.class);
 	}
 //=========================================================================
 

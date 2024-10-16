@@ -1,6 +1,7 @@
 package com.patientRecTransferApp.controller;
 
 import com.patientRecTransferApp.dto.HospitalDto;
+import com.patientRecTransferApp.dto.LoginDto;
 import com.patientRecTransferApp.dto.RegisterDto;
 import com.patientRecTransferApp.dto.response.AuthResponse;
 import com.patientRecTransferApp.entity.Hospital;
@@ -27,8 +28,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestParam String email, @RequestParam String password, HttpServletRequest request) {
-        return appUserService.login(email, password, request);
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginDto loginDto, HttpServletRequest request) {
+        return appUserService.login(loginDto.getEmail(), loginDto.getPassword(), request);
     }
 
     @PostMapping("/register/hospital")

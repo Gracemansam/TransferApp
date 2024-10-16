@@ -79,7 +79,7 @@ public class AppUser extends BaseEntity {
 
     public Collection<? extends GrantedAuthority> getPermissions() {
         return this.roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                .collect(Collectors.toSet());
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+                .collect(Collectors.toList());
     }
 }
