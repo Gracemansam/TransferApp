@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -35,5 +37,11 @@ public class AuthController {
     @PostMapping("/register/hospital")
     public ResponseEntity<Hospital> registerHospital(@RequestBody HospitalDto hospitalDto) {
         return appUserService.registerHospital(hospitalDto);
+    }
+
+    @GetMapping("/hospitals")
+    public ResponseEntity<List<Hospital>> getAllHospitals() {
+        List<Hospital> hospitals = appUserService.getAllHospital();
+        return ResponseEntity.ok(hospitals);
     }
 }

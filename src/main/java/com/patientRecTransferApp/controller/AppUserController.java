@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -89,5 +90,18 @@ public class AppUserController {
     public ResponseEntity<List<Hospital>> getAllHospitals() {
         List<Hospital> hospitals = appUserService.getAllHospital();
         return ResponseEntity.ok(hospitals);
+    }
+
+    @GetMapping("/principal")
+    public ResponseEntity<AppUser> getPrincipalUserDetails(Principal principal) {
+        String email = principal.getName();
+        AppUser appUser = appUserService.findByEmail(email);
+        return ResponseEntity.ok(appUser);
+    }
+
+    @GetMapping("/by-name")
+    public ResponseEntity<Hospital> getHospitalByName(@RequestParam String name) {
+        Hospital hospital = appUserService.getHospitalByName(name);
+        return ResponseEntity.ok(hospital);
     }
 }

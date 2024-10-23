@@ -17,6 +17,7 @@ import com.patientRecTransferApp.repository.HospitalRepository;
 import com.patientRecTransferApp.repository.PatientRepository;
 import com.patientRecTransferApp.security.JwtTokenProvider;
 import com.patientRecTransferApp.service.AppUserService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
@@ -27,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -288,6 +290,16 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     public List<Hospital> getAllHospital() {
         return hospitalRepository.findAll();
+    }
+@Override
+    public AppUser findByEmail(String email) {
+        return appUserRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    }
+@Override
+    public Hospital getHospitalByName(String name) {
+        return hospitalRepository.findByName(name)
+                .orElseThrow(() -> new EntityNotFoundException("Hospital not found with name: " + name));
     }
 
 }

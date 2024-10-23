@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/transfer")
 public class DataTransferController {
@@ -40,4 +42,23 @@ public class DataTransferController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"decrypted_data.xlsx\"")
                 .body(resource);
     }
+
+    @GetMapping("/pending")
+    public List<DataTransferRequest> getAllPendingRequests() {
+        return dataTransferService.getRequestsByStatus("PENDING");
+    }
+
+    @GetMapping("/completed")
+    public List<DataTransferRequest> getAllCompletedRequests() {
+        return dataTransferService.getRequestsByStatus("COMPLETED");
+    }
+
+    @GetMapping("/latest-pending-request")
+    public ResponseEntity<DataTransferRequest> getLatestPendingRequest(
+            @RequestParam Long requestingFacility,
+            @RequestParam Long recipientFacility) {
+        DataTransferRequest request = dataTransferService.findLatestPendingRequest(requestingFacility, recipientFacility);
+        return ResponseEntity.ok(request);
+    }
+
 }

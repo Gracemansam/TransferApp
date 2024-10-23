@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -98,6 +99,14 @@ public class DataTransferService {
         return resource;
     }
 
+    public List<DataTransferRequest> getRequestsByStatus(String status) {
+        return dataTransferRepository.findByStatus(status);
+    }
+
+    public DataTransferRequest findLatestPendingRequest(Long requestingFacility, Long recipientFacility) {
+        return dataTransferRepository.findTopByRequestingFacilityAndRecipientFacilityAndStatusOrderByRequestTimeDesc(
+                requestingFacility, recipientFacility, "PENDING");
+    }
 
 
 }

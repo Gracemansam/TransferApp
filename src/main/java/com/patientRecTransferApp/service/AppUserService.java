@@ -43,4 +43,8 @@ public interface AppUserService {
     List<Patient> getAllPatient();
 
     List<Hospital> getAllHospital();
+
+    AppUser findByEmail(String email);
+
+    Hospital getHospitalByName(String name);
 }
