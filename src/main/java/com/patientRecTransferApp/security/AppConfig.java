@@ -35,7 +35,7 @@ public class AppConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		return http
 				.csrf(csrf -> csrf.disable())
-				.cors(cors -> cors.configurationSource(corsConfigurationSource())) // Ensure this line is included
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/auth/**").permitAll()
 						.requestMatchers("/api/admin/**").hasRole("HOSPITAL_ADMIN")
@@ -48,6 +48,10 @@ public class AppConfig {
 	}
 
 	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+		return authenticationConfiguration.getAuthenticationManager();
+	}
+	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 		configuration.setAllowedOrigins(Collections.singletonList("http://localhost:5173")); // Adjust the origin as needed
@@ -57,10 +61,10 @@ public class AppConfig {
 		source.registerCorsConfiguration("/**", configuration);
 		return source;
 	}
-	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-		return authenticationConfiguration.getAuthenticationManager();
-	}
+//	@Bean
+//	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+//		return authenticationConfiguration.getAuthenticationManager();
+//	}
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();

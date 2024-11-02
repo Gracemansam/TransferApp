@@ -26,15 +26,18 @@ public class CustomUserDetailsService implements UserDetailsService {
         AppUser appUser = appUserRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
+        Collection<GrantedAuthority> authorities = mapRolesToAuthorities(appUser.getRoles());
+
         return new org.springframework.security.core.userdetails.User(
                 appUser.getEmail(),
                 appUser.getPassword(),
-                appUser.getPermissions());
+                authorities);
     }
 
-    private Collection<? extends GrantedAuthority> mapRolesToAuthorities(Collection<String> roles) {
+    private Collection<GrantedAuthority> mapRolesToAuthorities(Collection<String> roles) {
         return roles.stream()
-                .map(SimpleGrantedAuthority::new)
+                .map(role -> new SimpleGrantedAuthority(
+                        role.startsWith("ROLE_") ? role : "ROLE_" + role))
                 .collect(Collectors.toList());
     }
 }

@@ -19,6 +19,7 @@ import java.time.LocalDate;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RegisterDto {
+    private Long id;
 
     @NotEmpty(message = "First name should not be empty")
     private String firstName;

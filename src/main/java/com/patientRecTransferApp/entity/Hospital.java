@@ -1,9 +1,9 @@
 package com.patientRecTransferApp.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Entity
 @Table(name = "hospitals")
@@ -26,6 +26,8 @@ public class Hospital  extends BaseEntity{
 
     @Column(name = "email")
     private String email;
+
+
 
     // Getters and setters
 }

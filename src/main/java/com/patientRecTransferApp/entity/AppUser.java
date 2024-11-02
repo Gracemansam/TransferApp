@@ -1,5 +1,6 @@
 package com.patientRecTransferApp.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class AppUser extends BaseEntity {
 
     @Column(nullable = false, unique = true)
@@ -64,6 +66,8 @@ public class AppUser extends BaseEntity {
 
     @Version
     private Long version;
+
+
 
     public void addRole(String role) {
         this.roles.add(role);

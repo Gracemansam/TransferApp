@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 @Table
 public class DataTransferRequest extends BaseEntity{
 
+    private Long appUserId;
     private Long requestingFacility;
     private Long recipientFacility;
     private String status;
@@ -23,5 +24,6 @@ public class DataTransferRequest extends BaseEntity{
     private LocalDateTime responseTime;
     private String encryptedFilePath;
     private String metadataFilePath;
+    private String message;
 
 }

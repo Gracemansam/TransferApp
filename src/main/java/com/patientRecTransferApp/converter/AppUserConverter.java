@@ -24,6 +24,7 @@ public class AppUserConverter {
 
     public RegisterDto convertAppUserEntityToDTO(AppUser appUser){
         RegisterDto registerDto = new RegisterDto();
+        registerDto.setId(appUser.getId());
         registerDto.setFirstName(appUser.getFirstName());
         registerDto.setLastName(appUser.getLastName());
         registerDto.setPhoneNumber(appUser.getPhoneNumber());

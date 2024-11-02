@@ -3,6 +3,7 @@ package com.patientRecTransferApp.service;
 import com.patientRecTransferApp.dto.HospitalDto;
 import com.patientRecTransferApp.dto.RegisterDto;
 import com.patientRecTransferApp.dto.response.AuthResponse;
+import com.patientRecTransferApp.dto.response.HospitalCountResponse;
 import com.patientRecTransferApp.entity.AppUser;
 import com.patientRecTransferApp.entity.Hospital;
 import com.patientRecTransferApp.entity.Patient;
@@ -47,4 +48,6 @@ public interface AppUserService {
     AppUser findByEmail(String email);
 
     Hospital getHospitalByName(String name);
+
+    HospitalCountResponse getHospitalId();
 }

@@ -6,6 +6,7 @@ import com.patientRecTransferApp.converter.PatientConverter;
 import com.patientRecTransferApp.dto.HospitalDto;
 import com.patientRecTransferApp.dto.RegisterDto;
 import com.patientRecTransferApp.dto.response.AuthResponse;
+import com.patientRecTransferApp.dto.response.HospitalCountResponse;
 import com.patientRecTransferApp.entity.AppUser;
 import com.patientRecTransferApp.entity.Hospital;
 import com.patientRecTransferApp.entity.Patient;
@@ -15,6 +16,7 @@ import com.patientRecTransferApp.exception.ErrorModel;
 import com.patientRecTransferApp.repository.AppUserRepository;
 import com.patientRecTransferApp.repository.HospitalRepository;
 import com.patientRecTransferApp.repository.PatientRepository;
+import com.patientRecTransferApp.security.CustomUserDetailsService;
 import com.patientRecTransferApp.security.JwtTokenProvider;
 import com.patientRecTransferApp.service.AppUserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,12 +24,17 @@ import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -37,12 +44,10 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
-import java.util.ConcurrentModificationException;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import javax.crypto.Cipher;
-import java.util.Base64;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,6 +59,10 @@ public class AppUserServiceImpl implements AppUserService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PatientConverter patientConverter;
     private final PatientRepository patientRepository;
+    private final CustomUserDetailsService userDetailsService;
+    private final DataTransferService dataTransferService;
+
+    private static final Logger logger = LoggerFactory.getLogger(AppUserServiceImpl.class);
 
     private static final String AES_KEY = generateAESKey(256);
 
@@ -97,30 +106,57 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<AuthResponse> registerHospitalAdmin(RegisterDto registerDto, Long hospitalId) {
-        if (appUserRepository.findByEmail(registerDto.getEmail()).isPresent()) {
-            throw new BusinessException(ErrorModel.builder()
-                    .code(CommonConstant.USER_ALREADY_EXIST_CODE)
-                    .message(CommonConstant.USER_ALREADY_EXIST)
-                    .build());
+        try {
+            if (appUserRepository.findByEmail(registerDto.getEmail()).isPresent()) {
+                throw new BusinessException(ErrorModel.builder()
+                        .code(CommonConstant.USER_ALREADY_EXIST_CODE)
+                        .message(CommonConstant.USER_ALREADY_EXIST)
+                        .build());
+            }
+
+            Hospital hospital = hospitalRepository.findById(hospitalId)
+                    .orElseThrow(() -> new RuntimeException("Hospital not found"));
+
+            AppUser admin = appUserConverter.convertDTOtoAppUserEntity(registerDto);
+            admin.setPassword(passwordEncoder.encode(registerDto.getPassword()));
+            admin.addRole("ROLE_HOSPITAL_ADMIN");
+            admin.setUserType(UserType.HOSPITAL_ADMIN);
+            admin.setHospital(hospital);
+
+            AppUser savedAdmin = appUserRepository.save(admin);
+
+            // Create authorities list
+            Set<GrantedAuthority> authorities = savedAdmin.getRoles().stream()
+                    .map(role -> new SimpleGrantedAuthority(
+                            role.startsWith("ROLE_") ? role : "ROLE_" + role))
+                    .collect(Collectors.toSet());
+
+            // Create UserDetails object
+            UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                    .username(savedAdmin.getEmail())
+                    .password(savedAdmin.getPassword())
+                    .authorities(authorities)
+                    .build();
+
+            // Create authentication with UserDetails
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            authorities
+                    );
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = jwtTokenProvider.generateToken(authentication);
+
+            logger.info("Hospital admin registered successfully with email: " + savedAdmin.getEmail());
+            return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse(jwt, true));
+        } catch (Exception e) {
+            logger.error("Error registering hospital admin: " + e.getMessage());
+            throw e;
         }
-
-        Hospital hospital = hospitalRepository.findById(hospitalId)
-                .orElseThrow(() -> new RuntimeException("Hospital not found"));
-
-        AppUser admin = appUserConverter.convertDTOtoAppUserEntity(registerDto);
-        admin.setPassword(passwordEncoder.encode(registerDto.getPassword()));
-        admin.addRole("ROLE_HOSPITAL_ADMIN");
-        admin.setUserType(UserType.HOSPITAL_ADMIN);
-        admin.setHospital(hospital);
-
-        appUserRepository.save(admin);
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken(admin.getEmail(), admin.getPassword());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtTokenProvider.generateToken(authentication);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse( jwt,true));
     }
         private String encryptSecretAnswer(String secretAnswer) {
             try {
@@ -298,8 +334,26 @@ public class AppUserServiceImpl implements AppUserService {
     }
 @Override
     public Hospital getHospitalByName(String name) {
-        return hospitalRepository.findByName(name)
+        return hospitalRepository.findByNameIgnoreCase(name)
                 .orElseThrow(() -> new EntityNotFoundException("Hospital not found with name: " + name));
+    }
+    @Override
+    public HospitalCountResponse getHospitalId(){
+        Long userId = dataTransferService.getCurrentUserId();
+        Optional<AppUser> findUser = appUserRepository.findById(userId);
+        if (!findUser.isPresent()) {
+            throw new RuntimeException("No user found");
+
+        }
+        HospitalCountResponse countResponse = new HospitalCountResponse();
+        countResponse.setHosiptalId(findUser.get().getHospital().getId());
+        return countResponse;
+    }
+
+    public String getFacilityNameById(Long facilityId) {
+        return hospitalRepository.findById(facilityId)
+                .map(Hospital::getName)
+                .orElse("Unknown Facility");
     }
 
 }
