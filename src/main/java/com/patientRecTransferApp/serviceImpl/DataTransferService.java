@@ -1,8 +1,10 @@
 package com.patientRecTransferApp.serviceImpl;
 
 import com.patientRecTransferApp.dto.response.DataTransferResponses;
+import com.patientRecTransferApp.dto.response.FileDownloadDTO;
 import com.patientRecTransferApp.dto.response.HospitalCountResponse;
 import com.patientRecTransferApp.entity.*;
+import com.patientRecTransferApp.exception.ResourceNotFoundException;
 import com.patientRecTransferApp.repository.AppUserRepository;
 import com.patientRecTransferApp.repository.DataTransferRepository;
 
@@ -29,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -145,39 +148,63 @@ public class DataTransferService {
      * Download data method - Called by the Requesting Facility (A) to download
      * and decrypt their requested data
      */
-    public Resource downloadData(Long requestId, Long downloaderFacilityId) throws Exception {
+    public FileDownloadDTO downloadData(Long requestId, Long downloaderFacilityId) throws Exception {
+        // Input validation
         if (requestId == null || downloaderFacilityId == null) {
             throw new IllegalArgumentException("Request ID and downloader facility ID must not be null");
         }
 
         // Find and validate the transfer request
         DataTransferRequest request = dataTransferRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Transfer request not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Transfer request not found"));
 
-        // Verify downloader is the requesting facility
+        // Security checks
+        validateRequest(request, downloaderFacilityId);
+
+        // Validate file paths
+        validateFilePaths(request);
+
+        // Process the file
+        byte[] fileContent = processFile(request, downloaderFacilityId);
+
+        // Generate a meaningful filename
+        String fileName = generateFileName(request);
+
+        return new FileDownloadDTO(fileContent, fileName);
+    }
+
+    private void validateRequest(DataTransferRequest request, Long downloaderFacilityId) {
         if (!request.getRequestingFacility().equals(downloaderFacilityId)) {
             throw new SecurityException("Only the requesting facility can download this data");
         }
 
-        // Verify request status
         if (!"COMPLETED".equals(request.getStatus())) {
             throw new IllegalStateException("Data has not yet been uploaded for this request");
         }
+    }
 
-        // Read the encrypted data and metadata
+    private byte[] processFile(DataTransferRequest request, Long downloaderFacilityId) throws Exception {
+        // Read encrypted data and metadata
         String encryptedData = new String(Files.readAllBytes(Paths.get(request.getEncryptedFilePath())));
         String metadata = new String(Files.readAllBytes(Paths.get(request.getMetadataFilePath())));
 
+        // Create encrypted package
         EncryptedPackage encryptedPackage = new EncryptedPackage(encryptedData, metadata);
 
-        // Decrypt the data using the requesting facility's private key
+        // Decrypt the data
         String decryptedData = encryptionService.decryptData(encryptedPackage, downloaderFacilityId);
 
-        // Convert back to Excel format
-        byte[] excelBytes = excelService.writeExcelFile(decryptedData);
-
-        return new ByteArrayResource(excelBytes);
+        // Convert to Excel format
+        return excelService.writeExcelFile(decryptedData);
     }
+
+    private String generateFileName(DataTransferRequest request) {
+        // Generate a meaningful filename using request details
+        LocalDateTime now = LocalDateTime.now();
+        String timestamp = now.format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return String.format("data_transfer_%s_%s.xlsx", request.getId(), timestamp);
+    }
+
     private void validateFilePaths(DataTransferRequest request) {
         if (request.getEncryptedFilePath() == null || request.getMetadataFilePath() == null) {
             throw new ResponseStatusException(
@@ -197,7 +224,8 @@ public class DataTransferService {
                     HttpStatus.NOT_FOUND, "Metadata file not found or not readable");
         }
     }
-    public long getRequestsByStatus(String status, Long appUserId) {
+
+public long getRequestsByStatus(String status, Long appUserId) {
 
         return dataTransferRepository.countByStatusAndAppUserId(status, appUserId);
     }

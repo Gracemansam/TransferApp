@@ -1,7 +1,9 @@
 package com.patientRecTransferApp.controller;
 
+import com.patientRecTransferApp.converter.AppUserConverter;
 import com.patientRecTransferApp.dto.HospitalDto;
 import com.patientRecTransferApp.dto.RegisterDto;
+import com.patientRecTransferApp.dto.response.AppUserDTO;
 import com.patientRecTransferApp.dto.response.AuthResponse;
 import com.patientRecTransferApp.dto.response.HospitalCountResponse;
 import com.patientRecTransferApp.entity.AppUser;
@@ -24,14 +26,15 @@ import java.util.List;
 public class AppUserController {
 
     private final AppUserService appUserService;
+    private final AppUserConverter appUserConverter;
 
 
 
-
+    @PreAuthorize("hasRole('ROLE_HOSPITAL_ADMIN')")
     @PutMapping("/user/{id}")
-    public ResponseEntity<AppUser> updateUser(@PathVariable Long id, @RequestBody AppUser appUser) {
-        AppUser updatedUser = appUserService.updateActor(id, appUser);
-        return ResponseEntity.ok(updatedUser);
+    public ResponseEntity<AppUserDTO> updateUser(@PathVariable Long id, @RequestBody AppUserDTO appUserDTO) {
+        AppUser updatedUser = appUserService.updateActor(id, appUserConverter.toEntity(appUserDTO));
+        return ResponseEntity.ok(appUserConverter.toDTO(updatedUser));
     }
 
     @DeleteMapping("/user/{id}")

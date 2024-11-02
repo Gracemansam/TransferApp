@@ -1,11 +1,13 @@
 package com.patientRecTransferApp.controller;
 
 import com.patientRecTransferApp.dto.response.DataTransferResponses;
+import com.patientRecTransferApp.dto.response.FileDownloadDTO;
 import com.patientRecTransferApp.entity.DataTransferRequest;
 import com.patientRecTransferApp.entity.DataTransferResponse;
 import com.patientRecTransferApp.entity.Notification;
 import com.patientRecTransferApp.serviceImpl.DataTransferService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,20 +39,18 @@ public class DataTransferController {
     }
     @PreAuthorize("hasRole('ROLE_HOSPITAL_ADMIN')")
     @GetMapping("/download/{requestId}")
-    public ResponseEntity<Resource> downloadFile(@PathVariable Long requestId,
-                                                 @RequestParam("recipientFacilityId") Long recipientFacilityId) throws Exception {
-        // Get the file as a resource
-        Resource resource = dataTransferService.downloadData(requestId, recipientFacilityId);
+    public ResponseEntity<byte[]> downloadFile(
+            @PathVariable Long requestId,
+            @RequestParam("recipientFacilityId") Long recipientFacilityId) throws Exception {
 
-        // Set the content type to Excel
-        String contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        FileDownloadDTO fileData = dataTransferService.downloadData(requestId, recipientFacilityId);
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"decrypted_data.xlsx\"")
-                .body(resource);
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileData.getFileName() + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION)
+                .body(fileData.getFileContent());
     }
-
     @PreAuthorize("hasRole('ROLE_HOSPITAL_ADMIN')")
     @GetMapping("/pending")
     public long getAllPendingRequests() {
